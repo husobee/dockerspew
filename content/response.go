@@ -7,6 +7,13 @@ import (
 	"net/http"
 )
 
+const (
+	// SuccessCode Response Status
+	SuccessCode int = iota
+	// FailedDockerPingCode Response Status
+	FailedDockerPingCode
+)
+
 // Responder - Overloaded unrolled/render.v1 Render
 type Responder struct {
 	*render.Render
@@ -36,6 +43,7 @@ func (r Responder) Respond(w http.ResponseWriter, accept interface{}, s int, v i
 	}
 }
 
+// BaseResponse - this is the basic structure of all responses, for consistancy
 type BaseResponse struct {
 	XMLName xml.Name `json:"-" xml:"Response"`
 	Status  string   `json:"status" xml:"Status"`
