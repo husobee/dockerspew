@@ -12,6 +12,8 @@ const (
 	SuccessCode int = iota
 	// FailedDockerPingCode Response Status
 	FailedDockerPingCode
+	// FailedDockerPingCode Response Status
+	FailedDockerListContainersCode
 	// FailedWebsocketUpgradeCode Response Status
 	FailedWebsocketUpgradeCode
 )

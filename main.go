@@ -3,16 +3,15 @@ package main
 
 import (
 	"github.com/codegangsta/negroni"
-	"github.com/fsouza/go-dockerclient"
 	"github.com/gorilla/pat"
-	"github.com/gorilla/websocket"
 	"github.com/hashicorp/logutils"
+	"github.com/husobee/dockerspew/content"
 	"github.com/husobee/dockerspew/controllers"
 	"github.com/husobee/dockerspew/middlewares"
+	"github.com/husobee/dockerspew/models"
 	"github.com/spf13/viper"
 	"gopkg.in/unrolled/render.v1"
 	"log"
-	"net/http"
 	"os"
 	"strings"
 )
@@ -46,19 +45,18 @@ func main() {
 	// setup renderer
 	rend := render.New()
 	// setup a docker client
-	dockerClient, err := docker.NewClient(viper.GetString("docker_endpoint"))
+	dockerClient, err := models.NewDockerClient(viper.GetString("docker_endpoint"))
 	if err != nil {
 		log.Fatalln("[PANIC] Docker enpoint not accessable, bailing")
 	}
 	// define routes
 	r := pat.New()
-	websocketUpgrader := &websocket.Upgrader{
-		ReadBufferSize:  1024,
-		WriteBufferSize: 1024,
-		CheckOrigin:     func(r *http.Request) bool { return true },
-	}
-	spewController := controllers.NewSpewController(rend, dockerClient, websocketUpgrader)
+	// setup a websocketUpgrader
+	webSocketUpgrader := content.NewWebSocketUpgrader(1024, 1024)
+	// setup our spew controller
+	spewController := controllers.NewSpewController(rend, dockerClient, webSocketUpgrader)
 	r.Get("/spew", spewController.SpewHandler)
+	r.Get("/spew/", spewController.SpewHandler)
 	// startup classic negroni
 	n := negroni.Classic()
 	n.Use(middlewares.NewContentNegotiate(rend))

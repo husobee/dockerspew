@@ -12,7 +12,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"time"
 )
 
 // Controller - Base Controller type, holds a common content responder, which is a renderer
@@ -37,34 +36,6 @@ func (c *Controller) UpgradeWebsocket(w http.ResponseWriter, r *http.Request) (*
 		return nil, err
 	}
 	return wsConn, nil
-}
-
-func readLoop(wsConn *websocket.Conn) {
-	for {
-		if _, _, err := wsConn.NextReader(); err != nil {
-			wsConn.Close()
-			break
-		}
-	}
-}
-
-func (c *Controller) WebsocketLoop(wsConn *websocket.Conn) {
-	go readLoop(wsConn)
-	for {
-		p := []byte("blahdyblah")
-		messageType := websocket.TextMessage
-		var err error
-		//messageType, p, err := wsConn.ReadMessage()
-		//if err != nil {
-		//	log.Println("[ERROR] Failed to Read Message from Websocket")
-		//	return
-		//}
-		log.Println("[DEBUG] write a message")
-		if err = wsConn.WriteMessage(messageType, p); err != nil {
-			log.Println("[ERROR] Failed to Write Message to Websocket")
-		}
-		time.Sleep(5 * time.Second)
-	}
 }
 
 // Respond - Respond to the request with the render's Respond method.
