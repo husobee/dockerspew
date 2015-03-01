@@ -12,6 +12,7 @@ This package requires the following environmental variables:
 DOCKERSPEW_ENDPOINT -> the api endpoint of docker ("unix:///var/run/docker.sock")
 DOCKERSPEW_SERVER_HOST -> the server/port you wish to run this service on (":8080")
 DOCKERSPEW_LOG_LEVEL -> the log level you wish to obtain
+DOCKERSPEW_GOMAXPROCS -> Max procs overload (defaults to num cpu)
 
 ## Usage
 
