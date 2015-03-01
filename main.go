@@ -5,12 +5,14 @@ import (
 	"github.com/codegangsta/negroni"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/gorilla/pat"
+	"github.com/gorilla/websocket"
 	"github.com/hashicorp/logutils"
 	"github.com/husobee/dockerspew/controllers"
 	"github.com/husobee/dockerspew/middlewares"
 	"github.com/spf13/viper"
 	"gopkg.in/unrolled/render.v1"
 	"log"
+	"net/http"
 	"os"
 	"strings"
 )
@@ -50,7 +52,12 @@ func main() {
 	}
 	// define routes
 	r := pat.New()
-	spewController := controllers.NewSpewController(rend, dockerClient)
+	websocketUpgrader := &websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin:     func(r *http.Request) bool { return true },
+	}
+	spewController := controllers.NewSpewController(rend, dockerClient, websocketUpgrader)
 	r.Get("/spew", spewController.SpewHandler)
 	// startup classic negroni
 	n := negroni.Classic()

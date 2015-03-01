@@ -12,6 +12,8 @@ const (
 	SuccessCode int = iota
 	// FailedDockerPingCode Response Status
 	FailedDockerPingCode
+	// FailedWebsocketUpgradeCode Response Status
+	FailedWebsocketUpgradeCode
 )
 
 // Responder - Overloaded unrolled/render.v1 Render

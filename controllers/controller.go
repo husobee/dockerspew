@@ -5,24 +5,65 @@ package controllers
 import (
 	"bytes"
 	"github.com/gorilla/context"
+	"github.com/gorilla/websocket"
 	"github.com/husobee/dockerspew/content"
 	appctx "github.com/husobee/dockerspew/context"
 	"gopkg.in/unrolled/render.v1"
 	"io"
 	"log"
 	"net/http"
+	"time"
 )
 
 // Controller - Base Controller type, holds a common content responder, which is a renderer
 type Controller struct {
-	r content.Responder
+	r                 content.Responder
+	WebSocketUpgrader *websocket.Upgrader
 }
 
 // NewController - Create a new Controller object with a renderer
-func NewController(r *render.Render) *Controller {
+func NewController(r *render.Render, webSocketUpgrader *websocket.Upgrader) *Controller {
 	log.Print("[DEBUG] Instanciating a new Controller; render=", r)
 	return &Controller{
-		r: content.NewResponder(r),
+		r:                 content.NewResponder(r),
+		WebSocketUpgrader: webSocketUpgrader,
+	}
+}
+
+func (c *Controller) UpgradeWebsocket(w http.ResponseWriter, r *http.Request) (*websocket.Conn, error) {
+	wsConn, err := c.WebSocketUpgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println("[ERROR] Couldn't upgrade websocket")
+		return nil, err
+	}
+	return wsConn, nil
+}
+
+func readLoop(wsConn *websocket.Conn) {
+	for {
+		if _, _, err := wsConn.NextReader(); err != nil {
+			wsConn.Close()
+			break
+		}
+	}
+}
+
+func (c *Controller) WebsocketLoop(wsConn *websocket.Conn) {
+	go readLoop(wsConn)
+	for {
+		p := []byte("blahdyblah")
+		messageType := websocket.TextMessage
+		var err error
+		//messageType, p, err := wsConn.ReadMessage()
+		//if err != nil {
+		//	log.Println("[ERROR] Failed to Read Message from Websocket")
+		//	return
+		//}
+		log.Println("[DEBUG] write a message")
+		if err = wsConn.WriteMessage(messageType, p); err != nil {
+			log.Println("[ERROR] Failed to Write Message to Websocket")
+		}
+		time.Sleep(5 * time.Second)
 	}
 }
 
