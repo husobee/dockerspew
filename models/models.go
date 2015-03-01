@@ -13,13 +13,24 @@ func NewDockerClient(dockerEndpoint string) (*docker.Client, error) {
 
 // DockerLogBuffer - implements io.Writer
 type DockerLogBuffer struct {
-	logChan chan string
+	ContainerName []string
+	ContainerID   string
+	logChan       chan DockerLog
+}
+
+// DockerLog - a structure for log responses
+type DockerLog struct {
+	ContainerName []string `json:"name" xml:"Name"`
+	ContainerID   string   `json:"id" xml:"ID"`
+	LogMessage    string   `json:"log_message" xml:"LogMessage"`
 }
 
 //NewDockerLogBuffer - Create a new DockerLogBuffer with a channel of strings
-func NewDockerLogBuffer(logChan chan string) *DockerLogBuffer {
+func NewDockerLogBuffer(logChan chan DockerLog, containerName []string, containerID string) *DockerLogBuffer {
 	return &DockerLogBuffer{
-		logChan: logChan,
+		ContainerName: containerName,
+		ContainerID:   containerID,
+		logChan:       logChan,
 	}
 }
 
@@ -29,17 +40,22 @@ func (dlb *DockerLogBuffer) Write(data []byte) (int, error) {
 	if dataLen == 0 {
 		return 0, nil
 	}
-	dlb.logChan <- string(data)
+
+	dlb.logChan <- DockerLog{
+		ContainerID:   dlb.ContainerID,
+		ContainerName: dlb.ContainerName,
+		LogMessage:    string(data),
+	}
 	return dataLen, nil
 }
 
 // GetLogChan - Get the log Channel
-func (dlb *DockerLogBuffer) GetLogChan() chan string {
+func (dlb *DockerLogBuffer) GetLogChan() chan DockerLog {
 	return dlb.logChan
 }
 
 //StreamContainerLogsById - Write out the container logs to out
-func StreamContainerLogsById(dockerClient *docker.Client, id string, out io.Writer) error {
+func StreamContainerLogsById(dockerClient *docker.Client, id string, out io.Writer, stop chan bool) error {
 	logOptions := docker.LogsOptions{
 		Container:    id,
 		OutputStream: out,
@@ -51,6 +67,8 @@ func StreamContainerLogsById(dockerClient *docker.Client, id string, out io.Writ
 		Tail:         "1",
 		RawTerminal:  false,
 	}
+	// need to rewrite dockerclient to accept a stop signal, i assume this will stream forever
+	// not cool TODO
 	return dockerClient.Logs(logOptions)
 }
 

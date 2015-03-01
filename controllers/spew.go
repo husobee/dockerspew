@@ -52,12 +52,12 @@ func (sc *SpewController) SpewHandler(w http.ResponseWriter, r *http.Request) {
 		sc.Respond(w, r, 500, content.NewBaseResponse("failure", "failed to list containers", content.FailedDockerListContainersCode))
 		return
 	}
-	var containerIDList []string
+	var containerList []docker.APIContainers
 	for _, container := range containers {
 		if !strings.Contains(container.Status, "Exit") {
 			for _, name := range container.Names {
 				if strings.Contains(name, contains) {
-					containerIDList = append(containerIDList, container.ID)
+					containerList = append(containerList, container)
 				}
 			}
 		}
@@ -65,7 +65,7 @@ func (sc *SpewController) SpewHandler(w http.ResponseWriter, r *http.Request) {
 	// Upgrade Connection to a websocket, coroutine out to websocket handler
 	if wsConn, err := sc.UpgradeWebsocket(w, r); err == nil {
 		webSocketConn := content.NewWebSocketConn(wsConn)
-		go sc.WebSocketSpewHandler(webSocketConn, containerIDList...)
+		go sc.WebSocketSpewHandler(r, webSocketConn, containerList...)
 		return
 	}
 	sc.Respond(w, r, 500, content.NewBaseResponse("failure", "Failed to upgrade to websocket", content.FailedWebsocketUpgradeCode))
@@ -73,40 +73,56 @@ func (sc *SpewController) SpewHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // WebSocketSpewHandler - Handles upgraded websocket communications with client
-func (sc *SpewController) WebSocketSpewHandler(wsConn *content.WebSocketConn, containerIds ...string) {
+func (sc *SpewController) WebSocketSpewHandler(r *http.Request, wsConn *content.WebSocketConn, containers ...docker.APIContainers) {
 	// this is the log chan, where the DockerLogBuffer will spew logs
-	var buf = models.NewDockerLogBuffer(make(chan string, 1024))
+	var logChan = make(chan models.DockerLog, 1024)
 	var err error
 	// throw away anything sent from client
-	go content.NoOpReadLoop(wsConn)
+	stopReading := make(chan bool)
+	stopStreaming := make(map[string]chan bool)
+	go content.NoOpReadLoop(wsConn, stopReading)
 	go func() {
 		for {
 			select {
-			case message := <-buf.GetLogChan():
+			// wait for the logChan
+			case message := <-logChan:
+				// on message get the next writer
 				log.Printf("[DEBUG] - message is %s\n", message)
 				if writer, err := wsConn.NextWriter(websocket.TextMessage); err == nil {
 					log.Println("[DEBUG] - got writer about to copy")
-					if _, err = writer.Write([]byte(message)); err != nil {
+					// write the response
+					if _, err := sc.WSRespond(writer, r, message); err != nil {
 						log.Println("[ERROR] Failed to copy Message to Websocket, err=", err)
 					}
-					log.Println("[DEBUG] Writing Message to Websocket, message=", message, " length=", len(message))
 					log.Println("[DEBUG] - done copying, closing writer")
+					// close the writer
 					if err = writer.Close(); err != nil {
 						log.Println("[ERROR] Failed to close Websocket, err=", err)
-
 					}
 				} else {
-					log.Println("[ERROR] Failed to Write Message to Websocket")
-					return
+					// failed to write to the websocket, probably dead, end this goroutine, and tell read to stop too
+					wsConn.KillChan <- true
 				}
+			case <-wsConn.KillChan:
+				stopReading <- true
+				for _, v := range stopStreaming {
+					v <- true
+					close(v)
+				}
+				close(logChan)
+				log.Println("[ERROR] Cleaning up after websocket")
+				return
 			}
 		}
 	}()
+
 	// kick off streaming of container logs
-	for _, containerID := range containerIds {
+	for _, container := range containers {
+		var buf = models.NewDockerLogBuffer(logChan, container.Names, container.ID)
+		stopStreaming[container.ID] = make(chan bool)
 		go func(cID string) {
-			err = models.StreamContainerLogsById(sc.DockerClient, cID, buf)
-		}(containerID)
+			err = models.StreamContainerLogsById(sc.DockerClient, cID, buf, stopStreaming[cID])
+		}(container.ID)
 	}
 	if err != nil {
 		log.Println("[ERROR] Failed to Stream Container Logs, err=", err.Error())

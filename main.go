@@ -13,6 +13,7 @@ import (
 	"gopkg.in/unrolled/render.v1"
 	"log"
 	"os"
+	"runtime"
 	"strings"
 )
 
@@ -20,6 +21,7 @@ func init() {
 	// set some defaults
 	viper.SetDefault("server_host", ":8080")
 	viper.SetDefault("log_level", "WARN")
+	viper.SetDefault("gomaxprocs", runtime.NumCPU())
 	viper.SetDefault("docker_endpoint", "unix:///var/run/docker.sock")
 	// get vars from viper env binding
 	viper.SetEnvPrefix("dockerspew") // will be uppercased automatically
@@ -33,6 +35,7 @@ func init() {
 		Writer:   os.Stderr,
 	}
 	log.SetOutput(filter)
+	runtime.GOMAXPROCS(viper.GetInt("gomaxprocs"))
 }
 
 func main() {

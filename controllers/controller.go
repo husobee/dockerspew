@@ -41,7 +41,13 @@ func (c *Controller) UpgradeWebsocket(w http.ResponseWriter, r *http.Request) (*
 // Respond - Respond to the request with the render's Respond method.
 func (c *Controller) Respond(w http.ResponseWriter, r *http.Request, code int, v interface{}) {
 	log.Print("[DEBUG] Response to Request; request=", r, "; code=", code, "; response=", v)
-	c.r.Respond(w, r, code, v)
+	c.r.Respond(w, context.Get(r, appctx.AcceptNegotiation), code, v)
+}
+
+// WSRespond - Respond to the request with the render's Respond method.
+func (c *Controller) WSRespond(w io.WriteCloser, r *http.Request, v interface{}) (int, error) {
+	log.Print("[DEBUG] Response to Request; request=", r, "; response=", v)
+	return c.r.WSRespond(w, context.Get(r, appctx.AcceptNegotiation), v)
 }
 
 // Decode - Decode the request body based on the content-type, return an error, and the raw body in []byte
