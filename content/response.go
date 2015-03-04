@@ -34,7 +34,7 @@ func NewResponder(r *render.Render) Responder {
 }
 
 // Respond - Based on the request's Accept Header, return the proper rendering.
-func (r Responder) Respond(w http.ResponseWriter, accept interface{}, s int, v interface{}) {
+func (r Responder) Respond(w http.ResponseWriter, accept string, s int, v interface{}) {
 	log.Print("[DEBUG] Responder.Respond - Accept is ", accept)
 	switch accept {
 	case render.ContentJSON:
@@ -49,20 +49,23 @@ func (r Responder) Respond(w http.ResponseWriter, accept interface{}, s int, v i
 	}
 }
 
+var xmlMarshal = xml.Marshal
+var jsonMarshal = json.Marshal
+
 // WSRespond - Based on the request's Accept Header, return the proper rendering.
-func (r Responder) WSRespond(w io.WriteCloser, accept interface{}, v interface{}) (int, error) {
+func (r Responder) WSRespond(w io.WriteCloser, accept string, v interface{}) (int, error) {
 	log.Print("[DEBUG] Responder.WSRespond - Accept is ", accept)
 	switch accept {
 	case render.ContentXML, "application/xml":
 		log.Print("[DEBUG] Responder.WSRespond - rendering XML of v=", v)
-		b, err := xml.Marshal(v)
+		b, err := xmlMarshal(v)
 		if err != nil {
 			return 0, err
 		}
 		return w.Write(b)
 	default:
 		log.Print("[DEBUG] Responder.WSRespond - rendering JSON of v=", v)
-		b, err := json.Marshal(v)
+		b, err := jsonMarshal(v)
 		if err != nil {
 			return 0, err
 		}
