@@ -2,7 +2,6 @@
 package models
 
 import (
-	"fmt"
 	"github.com/fsouza/go-dockerclient"
 	"io"
 )
@@ -44,13 +43,11 @@ func (dlb *DockerLogBuffer) Write(data []byte) (int, error) {
 		return 0, nil
 	}
 
-	fmt.Println("here")
 	dlb.logChan <- DockerLog{
 		ContainerID:   dlb.ContainerID,
 		ContainerName: dlb.ContainerName,
 		LogMessage:    string(data),
 	}
-	fmt.Println("here")
 	return dataLen, nil
 }
 
