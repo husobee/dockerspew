@@ -38,6 +38,8 @@ func init() {
 	runtime.GOMAXPROCS(viper.GetInt("gomaxprocs"))
 }
 
+var modelsNewDockerClient = models.NewDockerClient
+
 func main() {
 	log.Print("[DEBUG] Starting Server, config options: docker_endpoint:",
 		viper.GetString("docker_endpoint"),
@@ -48,9 +50,9 @@ func main() {
 	// setup renderer
 	rend := render.New()
 	// setup a docker client
-	dockerClient, err := models.NewDockerClient(viper.GetString("docker_endpoint"))
+	dockerClient, err := modelsNewDockerClient(viper.GetString("docker_endpoint"))
 	if err != nil {
-		log.Fatalln("[PANIC] Docker enpoint not accessable, bailing")
+		log.Panic("[PANIC] Docker enpoint not accessable, bailing")
 	}
 	// define routes
 	r := pat.New()
