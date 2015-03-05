@@ -36,15 +36,9 @@ func (mwsc *MockWebSocketConn) NextReader() (int, io.Reader, error) {
 	return 0, nil, nil
 }
 func (mwsc *MockWebSocketConn) Close() error {
-	if mwsc.MockClose != nil {
-		return mwsc.MockClose()
-	}
 	return nil
 }
 func (mwsc *MockWebSocketConn) GetKillChan() chan bool {
-	if mwsc.MockGetKillChan != nil {
-		return mwsc.MockGetKillChan()
-	}
 	return mwsc.KillChan
 }
 
